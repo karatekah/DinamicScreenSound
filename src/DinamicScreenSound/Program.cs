@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -19,6 +20,10 @@ internal static class Program
                 ["sessions"] => ListSessions(),
                 ["probe", var process, var output] when int.TryParse(process, out int pid) && pid > 0 =>
                     AudioProbe.Run(pid, output),
+                ["follow", var window, var audio, var primary, var secondary]
+                    when int.TryParse(window, out int windowPid) && windowPid > 0 &&
+                         int.TryParse(audio, out int audioPid) && audioPid > 0 =>
+                    WindowFollower.Run(windowPid, audioPid, primary, secondary),
                 ["--help"] => ShowUsage(0),
                 _ => ShowUsage(2)
             };
@@ -26,6 +31,11 @@ internal static class Program
         catch (COMException error)
         {
             Console.Error.WriteLine($"Windows could not complete the audio operation (0x{error.HResult:X8}): {error.Message}");
+            return 1;
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or Win32Exception)
+        {
+            Console.Error.WriteLine(error.Message);
             return 1;
         }
     }
@@ -89,6 +99,7 @@ internal static class Program
     private static int ShowUsage(int exitCode)
     {
         Console.WriteLine("Usage: DinamicScreenSound [list | sessions | probe <audio-pid> <output-name>]");
+        Console.WriteLine("     DinamicScreenSound follow <window-pid> <audio-pid> <primary-output> <secondary-output>");
         return exitCode;
     }
 }

@@ -8,7 +8,7 @@ internal sealed class TemporaryOutput
     private readonly AudioPolicy policy;
     private readonly Process process;
     private readonly (int Role, string? Original)[] previous;
-    private readonly Dictionary<int, string> changed = new();
+    private readonly Dictionary<int, string?> changed = new();
 
     internal TemporaryOutput(AudioPolicy policy, Process process)
     {
@@ -24,9 +24,9 @@ internal sealed class TemporaryOutput
         ];
     }
 
-    internal void Apply(string endpointId)
+    internal void Apply(string? endpointId)
     {
-        string target = AudioPolicy.DevicePath(endpointId);
+        string? target = endpointId is null ? null : AudioPolicy.DevicePath(endpointId);
         uint pid = (uint)process.Id;
         foreach (var (role, original) in previous)
         {
@@ -35,7 +35,14 @@ internal sealed class TemporaryOutput
                 throw new InvalidOperationException("The application closed during the test.");
             }
 
-            if (string.Equals(target, original, StringComparison.OrdinalIgnoreCase))
+            string? current = policy.GetPreference(pid, role);
+            string? expected = changed.TryGetValue(role, out string? lastApplied) ? lastApplied : original;
+            if (!string.Equals(current, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The output was changed in Windows. Tracking stopped to preserve that setting.");
+            }
+
+            if (string.Equals(target, current, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
