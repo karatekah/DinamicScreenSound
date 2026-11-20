@@ -4,7 +4,7 @@ namespace DinamicScreenSound;
 
 internal sealed record AudioEndpoint(string Id, string Name, bool IsDefault);
 
-internal static class CoreAudio
+internal static partial class CoreAudio
 {
     private const int Render = 0;
     private const int ConsoleRole = 0;
@@ -17,35 +17,43 @@ internal static class CoreAudio
         try
         {
             string? defaultId = GetDefaultOutputId(enumerator);
-            enumerator.EnumAudioEndpoints(Render, Active, out IDeviceCollection collection);
-            try
+            var endpoints = new List<AudioEndpoint>();
+            foreach (IDevice device in EnumerateOutputs(enumerator))
             {
-                collection.GetCount(out uint count);
-                var endpoints = new List<AudioEndpoint>();
-                for (uint index = 0; index < count; index++)
-                {
-                    collection.Item(index, out IDevice device);
-                    try
-                    {
-                        device.GetId(out string id);
-                        endpoints.Add(new AudioEndpoint(id, GetFriendlyName(device) ?? id, id == defaultId));
-                    }
-                    finally
-                    {
-                        Marshal.ReleaseComObject(device);
-                    }
-                }
+                device.GetId(out string id);
+                endpoints.Add(new AudioEndpoint(id, GetFriendlyName(device) ?? id, id == defaultId));
+            }
 
-                return endpoints;
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(collection);
-            }
+            return endpoints;
         }
         finally
         {
             Marshal.ReleaseComObject(enumerator);
+        }
+    }
+
+    private static IEnumerable<IDevice> EnumerateOutputs(IDeviceEnumerator enumerator)
+    {
+        enumerator.EnumAudioEndpoints(Render, Active, out IDeviceCollection collection);
+        try
+        {
+            collection.GetCount(out uint count);
+            for (uint index = 0; index < count; index++)
+            {
+                collection.Item(index, out IDevice device);
+                try
+                {
+                    yield return device;
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(device);
+                }
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(collection);
         }
     }
 
