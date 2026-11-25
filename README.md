@@ -4,9 +4,19 @@ DinamicScreenSound is a Windows 11 project that aims to make each app’s audio 
 
 The desktop app runs in the Windows notification area. Assign an output to each display, then start automatic routing for apps whose audio sessions and windows can be matched.
 
-## Build and run
+## Install and run on Windows
 
-From a Windows 11 desktop session with the .NET 10 SDK installed:
+From the repository root with the .NET 10 SDK installed, run:
+
+```powershell
+.\scripts\Install-Desktop.ps1
+```
+
+The script runs the routing checks, builds the Windows x64 executable, and updates the **DinamicScreenSound** desktop shortcut to the installed build. Use that shortcut for everyday use. If an older instance is running, select **Exit** in its notification area menu before opening the shortcut. This restores its audio output changes.
+
+## Test a development build
+
+From a Windows 11 desktop session, run a development build from the checkout:
 
 ```powershell
 dotnet run --project src/DinamicScreenSound -- tray
@@ -16,7 +26,7 @@ In **Settings**, choose an output for each display you want to control and selec
 
 Look for the blue monitor icon. A waveform indicates active routing, and pause bars indicate paused routing. The tooltip gives the status in text.
 
-An app keeps its current output while its windows span different displays. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
+An app keeps its current output while its windows span different displays. The tray shows **Shared app audio spans displays** when that prevents a switch. Move the app's windows onto the same display to resume automatic routing. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
 
 ## Set a fixed output for an app
 
