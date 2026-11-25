@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(DesktopBuild)' == 'true'">
+    <OutputType>WinExe</OutputType>
+    <DefineConstants>$(DefineConstants);DESKTOP_BUILD</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="DinamicScreenSound.Tests" />
+  </ItemGroup>
 </Project>

@@ -53,7 +53,7 @@ internal static class WindowFollower
         {
             try
             {
-                route.Restore();
+                route.Restore(audioProcess);
             }
             finally
             {
@@ -81,7 +81,7 @@ internal static class WindowFollower
                 bool useDefault = !outputs.Any(output => output.Id == endpoint.Id);
                 if (endpoint != applied || useDefault != wasOnDefault)
                 {
-                    route.Apply(useDefault ? null : endpoint.Id);
+                    route.Apply(audioProcess, useDefault ? null : endpoint.Id);
                     Console.WriteLine($"{sample} → {(useDefault ? "Windows default output" : endpoint.Name)}");
                     applied = endpoint;
                     wasOnDefault = useDefault;
@@ -93,7 +93,7 @@ internal static class WindowFollower
         }
     }
 
-    private static string? SampleScreen(nint window, uint thread)
+    internal static string? SampleScreen(nint window, uint thread)
     {
         const uint inMoveOrSizeLoop = 0x00000002;
         var gui = new GuiThreadInfo { Size = (uint)Marshal.SizeOf<GuiThreadInfo>() };

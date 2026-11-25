@@ -2,14 +2,30 @@
 
 DinamicScreenSound is a Windows 11 project that aims to make each app’s audio follow its window between displays.
 
-The console prototype lists displays, audio outputs, and active audio sessions. It includes a reversible audio test and a mode that follows one window across two displays.
+The desktop app runs in the Windows notification area. Assign an output to each display, then start automatic routing for apps whose audio sessions and windows can be matched.
 
 ## Build and run
 
 From a Windows 11 desktop session with the .NET 10 SDK installed:
 
 ```powershell
-dotnet run --project src/DinamicScreenSound
+dotnet run --project src/DinamicScreenSound -- tray
+```
+
+In **Settings**, choose an output for each display you want to control and select **Save**. If Windows hides the tray icon, open the notification area overflow. Right-click the icon and select **Start routing**. The app saves the assignments under `%LOCALAPPDATA%\DinamicScreenSound\outputs.json` and starts paused each time it opens.
+
+An app keeps its current output while its windows span different displays. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
+
+To produce a portable desktop executable for Windows x64:
+
+```powershell
+dotnet publish src/DinamicScreenSound -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DesktopBuild=true -o src/DinamicScreenSound/bin/desktop/win-x64
+```
+
+## Console diagnostics
+
+```powershell
+dotnet run --project src/DinamicScreenSound -- list
 ```
 
 The read-only inventory shows the primary display, display coordinates, and the default Windows audio output.
@@ -28,7 +44,7 @@ Keep the app open during the test. The command attempts to move its active sessi
 
 Per-app routing uses an internal Windows interface. The measurement depends on the app opening its stream on the new output and continuing to play audio. [Core Audio](https://learn.microsoft.com/en-us/windows/win32/coreaudio/core-audio-interfaces) · [Application audio policy reference](https://github.com/File-New-Project/EarTrumpet/blob/master/EarTrumpet/Interop/MMDeviceAPI/IAudioPolicyConfigFactoryVariantFor21H2.cs)
 
-## Follow a window
+## Follow a window from the console
 
 To test with Brave, keep a single browser window open and play a video. Find the PID of the window and the PID of its audio session. Brave can use separate processes for each.
 
@@ -48,6 +64,8 @@ In the initial Windows 11 test, Brave kept playing while its audio switched from
 ## Contributing
 
 Use English for code, documentation, and commit messages. Use the `type(scope): summary` format for commits.
+
+Run the routing checks with `dotnet run --project tests`.
 
 ## License
 

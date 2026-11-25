@@ -6,14 +6,14 @@ namespace DinamicScreenSound;
 internal sealed class TemporaryOutput
 {
     private readonly AudioPolicy policy;
-    private readonly Process process;
     private readonly (int Role, string? Original)[] previous;
     private readonly Dictionary<int, string?> changed = new();
+
+    internal bool HasChanges => changed.Count != 0;
 
     internal TemporaryOutput(AudioPolicy policy, Process process)
     {
         this.policy = policy;
-        this.process = process;
         const int consoleRole = 0;
         const int multimediaRole = 1;
         uint pid = (uint)process.Id;
@@ -24,7 +24,7 @@ internal sealed class TemporaryOutput
         ];
     }
 
-    internal void Apply(string? endpointId)
+    internal void Apply(Process process, string? endpointId)
     {
         string? target = endpointId is null ? null : AudioPolicy.DevicePath(endpointId);
         uint pid = (uint)process.Id;
@@ -39,7 +39,7 @@ internal sealed class TemporaryOutput
             string? expected = changed.TryGetValue(role, out string? lastApplied) ? lastApplied : original;
             if (!string.Equals(current, expected, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("The output was changed in Windows. Tracking stopped to preserve that setting.");
+                throw new OutputChangedException();
             }
 
             if (string.Equals(target, current, StringComparison.OrdinalIgnoreCase))
@@ -48,11 +48,18 @@ internal sealed class TemporaryOutput
             }
 
             policy.SetPreference(pid, role, target);
-            changed[role] = target;
+            if (string.Equals(target, original, StringComparison.OrdinalIgnoreCase))
+            {
+                changed.Remove(role);
+            }
+            else
+            {
+                changed[role] = target;
+            }
         }
     }
 
-    internal void Restore()
+    internal void Restore(Process process)
     {
         uint pid = (uint)process.Id;
         COMException? failure = null;
@@ -75,6 +82,8 @@ internal sealed class TemporaryOutput
                 {
                     policy.SetPreference(pid, role, original);
                 }
+
+                changed.Remove(role);
             }
             catch (COMException error)
             {
@@ -88,3 +97,6 @@ internal sealed class TemporaryOutput
         }
     }
 }
+
+internal sealed class OutputChangedException() : InvalidOperationException(
+    "The output was changed in Windows. Tracking stopped to preserve that setting.");

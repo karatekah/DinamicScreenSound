@@ -10,10 +10,20 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+        bool openTray = args is ["tray"];
+#if DESKTOP_BUILD
+        openTray |= args.Length == 0;
+#endif
+        if (openTray)
+        {
+            Application.EnableVisualStyles();
+            return TrayApplication.Run();
+        }
+
         Console.OutputEncoding = Encoding.UTF8;
         try
         {
-            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             return args switch
             {
                 [] or ["list"] => ListDevices(),
@@ -98,7 +108,7 @@ internal static class Program
 
     private static int ShowUsage(int exitCode)
     {
-        Console.WriteLine("Usage: DinamicScreenSound [list | sessions | probe <audio-pid> <output-name>]");
+        Console.WriteLine("Usage: DinamicScreenSound [tray | list | sessions | probe <audio-pid> <output-name>]");
         Console.WriteLine("     DinamicScreenSound follow <window-pid> <audio-pid> <primary-output> <secondary-output>");
         return exitCode;
     }

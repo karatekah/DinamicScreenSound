@@ -44,7 +44,7 @@ internal static class AudioProbe
             {
                 Console.WriteLine($"PID {pid} · {originalOutput?.Name ?? sources[0]} → {target.Name}");
                 timer.Start();
-                route.Apply(target.Id);
+                route.Apply(process, target.Id);
                 outbound = WaitForSignal((uint)pid, target.Id, timer, cancellation.Token);
                 Report("To target", outbound);
                 if (outbound.HasValue)
@@ -55,7 +55,7 @@ internal static class AudioProbe
             finally
             {
                 timer.Restart();
-                route.Restore();
+                route.Restore(process);
             }
 
             if (!cancellation.IsCancellationRequested && outbound.HasValue)
