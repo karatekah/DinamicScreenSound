@@ -30,7 +30,7 @@ internal sealed class AppExceptionsForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(588, 265);
         MinimumSize = new Size(418, 280);
-        Icon = SystemIcons.Application;
+        Icon = AppIcons.Application;
         MaximizeBox = false;
         MinimizeBox = false;
 

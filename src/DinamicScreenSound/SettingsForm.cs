@@ -16,7 +16,7 @@ internal sealed class SettingsForm : Form
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(588, Math.Clamp(130 + 66 * displays.Length, 246, 520));
         MinimumSize = new Size(418, 240);
-        Icon = SystemIcons.Application;
+        Icon = AppIcons.Application;
         MaximizeBox = false;
         MinimizeBox = false;
 

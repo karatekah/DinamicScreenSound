@@ -6,12 +6,14 @@
     <DisableWinExeOutputInference>true</DisableWinExeOutputInference>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Assets/App.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(DesktopBuild)' == 'true'">
     <OutputType>WinExe</OutputType>
     <DefineConstants>$(DefineConstants);DESKTOP_BUILD</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets/App.ico;Assets/Paused.ico" />
     <InternalsVisibleTo Include="DinamicScreenSound.Tests" />
   </ItemGroup>
 </Project>

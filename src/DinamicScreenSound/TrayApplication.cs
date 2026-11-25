@@ -27,7 +27,7 @@ internal sealed class TrayApplication : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("E&xit", null, (_, _) => ExitThread());
         toggleItem.Click += (_, _) => ToggleRouting();
-        icon = new NotifyIcon { Icon = SystemIcons.Application, ContextMenuStrip = menu };
+        icon = new NotifyIcon { ContextMenuStrip = menu };
         icon.DoubleClick += (_, _) => OpenSettings();
         timer.Tick += (_, _) => UpdateRouting();
         RefreshStatus();
@@ -145,6 +145,12 @@ internal sealed class TrayApplication : ApplicationContext
 
     private void RefreshStatus()
     {
+        Icon statusIcon = timer.Enabled ? AppIcons.Application : AppIcons.Paused;
+        if (icon.Icon != statusIcon)
+        {
+            icon.Icon = statusIcon;
+        }
+
         string label = timer.Enabled ? "Pause &routing" : "Start &routing";
         if (toggleItem.Text != label)
         {
