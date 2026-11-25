@@ -12,7 +12,8 @@ internal sealed class DesktopRouter : IDisposable
 
     internal void ResetSamples() => previousDisplays.Clear();
 
-    internal bool Update(IReadOnlyDictionary<string, string?> assignments, IReadOnlyDictionary<string, string?> exceptions)
+    internal (bool Complete, bool SharedAcrossDisplays) Update(IReadOnlyDictionary<string, string?> assignments,
+        IReadOnlyDictionary<string, string?> exceptions)
     {
         var paths = new Dictionary<int, string?>();
         string? GetPath(int pid)
@@ -39,12 +40,14 @@ internal sealed class DesktopRouter : IDisposable
         var available = CoreAudio.ListOutputs().Select(output => output.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var samples = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         bool complete = true;
+        bool sharedAcrossDisplays = false;
         foreach (var session in sessions)
         {
             string path = session.Key;
             OutputTarget? target = ResolveOutput(path, windows[path], displays, assignments, exceptions, available);
             if (target is null)
             {
+                sharedAcrossDisplays |= HasConflictingDisplays(windows[path], displays, assignments);
                 continue;
             }
 
@@ -68,7 +71,15 @@ internal sealed class DesktopRouter : IDisposable
         }
 
         previousDisplays = samples;
-        return complete;
+        return (complete, sharedAcrossDisplays);
+    }
+
+    internal static bool HasConflictingDisplays(IEnumerable<string?> windows,
+        IReadOnlyDictionary<string, DesktopDisplay> displays, IReadOnlyDictionary<string, string?> assignments)
+    {
+        string[] names = windows.OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        return names.Length > 1 && names.Any(name =>
+            displays.TryGetValue(name, out DesktopDisplay? display) && assignments.ContainsKey(display.Key));
     }
 
     internal static OutputTarget? ResolveOutput(string path, IEnumerable<string?> windows,

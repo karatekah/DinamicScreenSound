@@ -135,7 +135,13 @@ internal sealed class TrayApplication : ApplicationContext
     {
         try
         {
-            SetTooltip(router.Update(assignments, exceptions) ? "Routing active" : "Some apps could not be routed");
+            var (complete, sharedAcrossDisplays) = router.Update(assignments, exceptions);
+            SetTooltip((complete, sharedAcrossDisplays) switch
+            {
+                (false, _) => "Some apps could not be routed",
+                (true, true) => "Shared app audio spans displays",
+                _ => "Routing active"
+            });
         }
         catch (COMException)
         {

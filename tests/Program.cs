@@ -25,8 +25,21 @@ CheckOutput("fixed Windows default", ["Display 2"], new(null, null));
 exceptions.Clear();
 CheckOutput("display routing resumes after removing the exception", ["Display 2"], new("monitor-audio", "monitor"));
 CheckOutput("ambiguous windows keep their current output", ["Display 1", "Display 2"], null);
+CheckConflict("windows on different configured displays", ["Display 1", "Display 2"], true);
+CheckConflict("windows on the same display", ["Display 1", "display 1"], false);
+CheckConflict("a window with no stable display yet", ["Display 1", null], false);
+assignments.Clear();
+CheckConflict("windows with no display assignments", ["Display 1", "Display 2"], false);
 
 Console.WriteLine("Desktop routing checks passed.");
+
+void CheckConflict(string scenario, string?[] windows, bool expected)
+{
+    if (DesktopRouter.HasConflictingDisplays(windows, displays, assignments) != expected)
+    {
+        throw new InvalidOperationException($"Unexpected shared-audio status for {scenario}.");
+    }
+}
 
 void CheckOutput(string scenario, string?[] windows, DesktopRouter.OutputTarget? expected)
 {
