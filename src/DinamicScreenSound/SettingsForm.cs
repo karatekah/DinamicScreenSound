@@ -61,7 +61,7 @@ internal sealed class SettingsForm : Form
             WrapContents = false,
             TabIndex = 1
         };
-        var cancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 1 };
+        var cancel = new Button { Text = "&Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 1 };
         var save = new Button { Text = "&Save", AutoSize = true, TabIndex = 0 };
         save.Click += (_, _) => Save();
         buttons.Controls.Add(cancel);
@@ -92,26 +92,8 @@ internal sealed class SettingsForm : Form
             Margin = new Padding(3, 3, 3, 14),
             TabIndex = index * 2 + 1
         };
-        selection.Items.Add(new OutputChoice("No assignment", false, null));
-        selection.Items.Add(new OutputChoice("Windows default output", true, null));
-        foreach (AudioEndpoint output in outputs.OrderBy(output => output.Name, StringComparer.CurrentCultureIgnoreCase))
-        {
-            selection.Items.Add(new OutputChoice(output.Name, true, output.Id));
-        }
-
-        selection.SelectedIndex = 0;
-        if (saved.TryGetValue(display.Key, out string? endpointId))
-        {
-            OutputChoice? selected = selection.Items.Cast<OutputChoice>().FirstOrDefault(choice =>
-                choice.Assigned && string.Equals(choice.EndpointId, endpointId, StringComparison.OrdinalIgnoreCase));
-            if (selected is null)
-            {
-                selected = new OutputChoice("Unavailable saved output", true, endpointId);
-                selection.Items.Add(selected);
-            }
-
-            selection.SelectedItem = selected;
-        }
+        bool hasAssignment = saved.TryGetValue(display.Key, out string? endpointId);
+        OutputChoice.Populate(selection, outputs, "No assignment", hasAssignment, endpointId);
 
         fields.Controls.Add(label, 0, index * 2);
         fields.Controls.Add(selection, 0, index * 2 + 1);
@@ -145,8 +127,4 @@ internal sealed class SettingsForm : Form
         }
     }
 
-    private sealed record OutputChoice(string Label, bool Assigned, string? EndpointId)
-    {
-        public override string ToString() => Label;
-    }
 }

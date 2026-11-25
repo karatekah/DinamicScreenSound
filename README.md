@@ -16,6 +16,14 @@ In **Settings**, choose an output for each display you want to control and selec
 
 An app keeps its current output while its windows span different displays. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
 
+## Set a fixed output for an app
+
+Open **App Exceptions** from the notification area icon. Pick an application from the list or use **Browse** to select its `.exe`. Choose a fixed audio output and select **Save**. While routing is active, the fixed output takes priority over display routing, including for apps playing in the background. If the fixed device disconnects, the app uses the Windows default output and returns to the fixed device when it reconnects.
+
+An exception applies to the whole application. For example, a rule for `brave.exe` applies to its calls, tabs, and windows. Choose **Follow display** to remove a rule. The next eligible display determines the output. Rules are saved in `%LOCALAPPDATA%\DinamicScreenSound\exceptions.json`.
+
+Use **Tab** to reach the application and output selectors, the **Arrow** keys to change a selection, **Alt+S** to save, and **Esc** to cancel. Use the Windows notification area to reach the tray menu with a keyboard or screen reader.
+
 To produce a portable desktop executable for Windows x64:
 
 ```powershell

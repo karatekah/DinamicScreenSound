@@ -12,22 +12,17 @@ internal sealed class TrayApplication : ApplicationContext
     private readonly ToolStripMenuItem toggleItem = new();
     private readonly NotifyIcon icon;
     private Dictionary<string, string?> assignments;
-    private SettingsForm? settings;
+    private Dictionary<string, string?> exceptions;
+    private Form? openDialog;
     private bool disposed;
 
     private TrayApplication()
     {
-        try
-        {
-            assignments = OutputSettings.Load();
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
-        {
-            ShowWarning("Could not read the saved output assignments. Open Settings to configure the displays.");
-            assignments = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        }
+        assignments = LoadRules(OutputSettings.Load, "Could not read the saved display outputs. Open Settings to configure the displays.");
+        exceptions = LoadRules(OutputSettings.LoadExceptions, "Could not read the saved application exceptions. Open App Exceptions to configure them.");
 
         menu.Items.Add("&Settings…", null, (_, _) => OpenSettings());
+        menu.Items.Add("&App Exceptions…", null, (_, _) => OpenExceptions());
         menu.Items.Add(toggleItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("E&xit", null, (_, _) => ExitThread());
@@ -37,9 +32,24 @@ internal sealed class TrayApplication : ApplicationContext
         timer.Tick += (_, _) => UpdateRouting();
         RefreshStatus();
         icon.Visible = true;
-        if (assignments.Count == 0)
+        if (!HasRules)
         {
             Application.Idle += OpenFirstTimeSettings;
+        }
+    }
+
+    private bool HasRules => assignments.Count != 0 || exceptions.Count != 0;
+
+    private static Dictionary<string, string?> LoadRules(Func<Dictionary<string, string?>> load, string warning)
+    {
+        try
+        {
+            return load();
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            ShowWarning(warning);
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
@@ -64,22 +74,26 @@ internal sealed class TrayApplication : ApplicationContext
         OpenSettings();
     }
 
-    private void OpenSettings()
+    private void OpenSettings() => OpenConfiguration(() => new SettingsForm(assignments), form => assignments = form.Assignments);
+
+    private void OpenExceptions() => OpenConfiguration(() => new AppExceptionsForm(exceptions), form => exceptions = form.Exceptions);
+
+    private void OpenConfiguration<T>(Func<T> create, Action<T> accept) where T : Form
     {
-        if (settings is not null)
+        if (openDialog is not null)
         {
-            settings.Activate();
+            openDialog.Activate();
             return;
         }
 
         try
         {
-            using var form = new SettingsForm(assignments);
-            settings = form;
+            using T form = create();
+            openDialog = form;
             if (form.ShowDialog() == DialogResult.OK)
             {
-                assignments = form.Assignments;
-                if (assignments.Count == 0)
+                accept(form);
+                if (!HasRules)
                 {
                     timer.Stop();
                 }
@@ -90,11 +104,11 @@ internal sealed class TrayApplication : ApplicationContext
         }
         catch (COMException)
         {
-            ShowWarning("Could not list the audio outputs. Open Settings again after Windows reconnects the devices.");
+            ShowWarning("Could not list audio devices. Try again after Windows reconnects the devices.");
         }
         finally
         {
-            settings = null;
+            openDialog = null;
         }
     }
 
@@ -104,7 +118,7 @@ internal sealed class TrayApplication : ApplicationContext
         {
             timer.Stop();
         }
-        else if (assignments.Count > 0)
+        else if (HasRules)
         {
             router.ResetSamples();
             timer.Start();
@@ -121,7 +135,7 @@ internal sealed class TrayApplication : ApplicationContext
     {
         try
         {
-            SetTooltip(router.Update(assignments) ? "Routing active" : "Some apps could not be routed");
+            SetTooltip(router.Update(assignments, exceptions) ? "Routing active" : "Some apps could not be routed");
         }
         catch (COMException)
         {
@@ -131,7 +145,7 @@ internal sealed class TrayApplication : ApplicationContext
 
     private void RefreshStatus()
     {
-        string label = timer.Enabled ? "&Pause routing" : "&Start routing";
+        string label = timer.Enabled ? "Pause &routing" : "Start &routing";
         if (toggleItem.Text != label)
         {
             toggleItem.Text = label;
@@ -152,7 +166,7 @@ internal sealed class TrayApplication : ApplicationContext
     protected override void ExitThreadCore()
     {
         timer.Stop();
-        settings?.Close();
+        openDialog?.Close();
         if (router.Restore() > 0)
         {
             ShowWarning("Some audio outputs could not be restored. Review the affected apps in the Windows volume mixer.");

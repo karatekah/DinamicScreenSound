@@ -12,7 +12,7 @@ internal sealed class DesktopRouter : IDisposable
 
     internal void ResetSamples() => previousDisplays.Clear();
 
-    internal bool Update(IReadOnlyDictionary<string, string?> assignments)
+    internal bool Update(IReadOnlyDictionary<string, string?> assignments, IReadOnlyDictionary<string, string?> exceptions)
     {
         var paths = new Dictionary<int, string?>();
         string? GetPath(int pid)
@@ -42,23 +42,24 @@ internal sealed class DesktopRouter : IDisposable
         foreach (var session in sessions)
         {
             string path = session.Key;
-            string? displayName = GetSharedDisplay(windows[path]);
-            if (displayName is null || !displays.TryGetValue(displayName, out DesktopDisplay? display) ||
-                !assignments.TryGetValue(display.Key, out string? output))
+            OutputTarget? target = ResolveOutput(path, windows[path], displays, assignments, exceptions, available);
+            if (target is null)
             {
                 continue;
             }
 
-            samples[path] = display.Key;
-            if (!previousDisplays.TryGetValue(path, out string? previous) || previous != display.Key)
+            if (target.Value.DisplayKey is { } key)
             {
-                continue;
+                samples[path] = key;
+                if (!previousDisplays.TryGetValue(path, out string? previous) || previous != key)
+                {
+                    continue;
+                }
             }
 
-            string? target = output is not null && available.Contains(output) ? output : null;
             try
             {
-                Apply(path, session.First(), target);
+                Apply(path, session.First(), target.Value.EndpointId);
             }
             catch (Exception error) when (error is COMException or Win32Exception)
             {
@@ -68,6 +69,26 @@ internal sealed class DesktopRouter : IDisposable
 
         previousDisplays = samples;
         return complete;
+    }
+
+    internal static OutputTarget? ResolveOutput(string path, IEnumerable<string?> windows,
+        IReadOnlyDictionary<string, DesktopDisplay> displays, IReadOnlyDictionary<string, string?> assignments,
+        IReadOnlyDictionary<string, string?> exceptions, IReadOnlySet<string> available)
+    {
+        string? displayKey = null;
+        if (!exceptions.TryGetValue(path, out string? output))
+        {
+            string? displayName = GetSharedDisplay(windows);
+            if (displayName is null || !displays.TryGetValue(displayName, out DesktopDisplay? display) ||
+                !assignments.TryGetValue(display.Key, out output))
+            {
+                return null;
+            }
+
+            displayKey = display.Key;
+        }
+
+        return new OutputTarget(output is not null && available.Contains(output) ? output : null, displayKey);
     }
 
     internal static string? GetSharedDisplay(IEnumerable<string?> windows)
@@ -184,7 +205,7 @@ internal sealed class DesktopRouter : IDisposable
         return match;
     }
 
-    private static Process? OpenProcess(int pid)
+    internal static Process? OpenProcess(int pid)
     {
         try
         {
@@ -196,7 +217,7 @@ internal sealed class DesktopRouter : IDisposable
         }
     }
 
-    private static string? ReadPath(Process process)
+    internal static string? ReadPath(Process process)
     {
         try
         {
@@ -209,6 +230,8 @@ internal sealed class DesktopRouter : IDisposable
     }
 
     public void Dispose() => policy?.Dispose();
+
+    internal readonly record struct OutputTarget(string? EndpointId, string? DisplayKey);
 
     private sealed class AppRoute(TemporaryOutput output, int pid)
     {
