@@ -2,7 +2,11 @@ using System.Runtime.InteropServices;
 
 namespace DinamicScreenSound;
 
-internal sealed record DesktopDisplay(string Key, string DeviceName, string Label);
+internal sealed record DesktopDisplay(string Key, string DeviceName, bool Primary, Rectangle Bounds)
+{
+    internal string Number => DeviceName.Replace(@"\\.\DISPLAY", "", StringComparison.OrdinalIgnoreCase);
+    internal string Label => $"Display {Number}{(Primary ? " (primary)" : "")} ({Bounds.X}, {Bounds.Y})";
+}
 
 internal static class DisplayCatalog
 {
@@ -35,10 +39,7 @@ internal static class DisplayCatalog
         string key = monitors.Count == 0
             ? screen.DeviceName
             : string.Join("|", monitors.Select(monitor => monitor.Id).Order(StringComparer.OrdinalIgnoreCase));
-        string number = screen.DeviceName.Replace(@"\\.\DISPLAY", "Display ", StringComparison.OrdinalIgnoreCase);
-        string primary = screen.Primary ? " (primary)" : "";
-        string position = $"({screen.Bounds.X}, {screen.Bounds.Y})";
-        return new DesktopDisplay(key, screen.DeviceName, $"{number}{primary} {position}");
+        return new DesktopDisplay(key, screen.DeviceName, screen.Primary, screen.Bounds);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

@@ -8,9 +8,14 @@ Verify("a moving or minimized window", ["Display 1", null], null);
 
 var displays = new Dictionary<string, DesktopDisplay>
 {
-    ["Display 1"] = new("laptop", "Display 1", "Primary display"),
-    ["Display 2"] = new("monitor", "Display 2", "External display")
+    ["Display 1"] = new("laptop", @"\\.\DISPLAY1", true, new(0, 0, 1920, 1080)),
+    ["Display 2"] = new("monitor", @"\\.\DISPLAY2", false, new(-1920, 0, 1920, 1080))
 };
+var external = displays["Display 2"] with { Primary = true, Bounds = new(0, 0, 1920, 1080) };
+if (external.Number != "2" || external.Label != "Display 2 (primary) (0, 0)" || external.Key != "monitor")
+{
+    throw new InvalidOperationException("A primary display change must preserve the number used in the row and its assignment key.");
+}
 var assignments = new Dictionary<string, string?> { ["laptop"] = "speakers", ["monitor"] = "monitor-audio" };
 var exceptions = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase) { ["brave.exe"] = "headphones" };
 var available = new HashSet<string> { "speakers", "monitor-audio", "headphones" };

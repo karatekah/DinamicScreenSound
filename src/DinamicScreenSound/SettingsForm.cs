@@ -6,6 +6,9 @@ internal sealed class SettingsForm : Form
 {
     private readonly Dictionary<string, string?> saved;
     private readonly List<(DesktopDisplay Display, ComboBox Control)> choices = [];
+    private readonly TableLayoutPanel fields = new() { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
+    private readonly List<DisplayIdentifier> identifiers = [];
+    private readonly System.Windows.Forms.Timer hideTimer = new() { Interval = 4000 };
 
     internal SettingsForm(Dictionary<string, string?> assignments)
     {
@@ -44,13 +47,12 @@ internal sealed class SettingsForm : Form
 
         var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, TabIndex = 0 };
         layout.Controls.Add(scroll, 0, 1);
-        var fields = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         scroll.Controls.Add(fields);
         IReadOnlyList<AudioEndpoint> outputs = CoreAudio.ListOutputs();
         foreach (DesktopDisplay display in displays)
         {
-            AddDisplay(fields, display, outputs);
+            AddDisplay(display, outputs);
         }
 
         var buttons = new FlowLayoutPanel
@@ -61,11 +63,25 @@ internal sealed class SettingsForm : Form
             WrapContents = false,
             TabIndex = 1
         };
-        var cancel = new Button { Text = "&Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 1 };
-        var save = new Button { Text = "&Save", AutoSize = true, TabIndex = 0 };
+        var cancel = new Button { Text = "&Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, TabIndex = 2 };
+        var save = new Button { Text = "&Save", AutoSize = true, TabIndex = 1 };
+        var identify = new Button
+        {
+            Text = "&Identify displays",
+            AutoSize = true,
+            TabIndex = 0,
+            AccessibleDescription = "Show each display's number on its screen for four seconds."
+        };
+        identify.Click += (_, _) =>
+        {
+            identify.Select();
+            IdentifyDisplays();
+        };
+        hideTimer.Tick += (_, _) => HideIdentifiers();
         save.Click += (_, _) => Save();
         buttons.Controls.Add(cancel);
         buttons.Controls.Add(save);
+        buttons.Controls.Add(identify);
         layout.Controls.Add(buttons, 0, 2);
         AcceptButton = save;
         CancelButton = cancel;
@@ -74,7 +90,68 @@ internal sealed class SettingsForm : Form
 
     internal Dictionary<string, string?> Assignments => saved;
 
-    private void AddDisplay(TableLayoutPanel fields, DesktopDisplay display, IReadOnlyList<AudioEndpoint> outputs)
+    private void IdentifyDisplays()
+    {
+        HideIdentifiers();
+        var displays = DisplayCatalog.GetDisplays();
+        if (!displays.SequenceEqual(choices.Select(choice => choice.Display)))
+        {
+            IReadOnlyList<AudioEndpoint> outputs;
+            try
+            {
+                outputs = CoreAudio.ListOutputs();
+            }
+            catch (COMException)
+            {
+                MessageBox.Show(this, "Windows is reconnecting audio devices. Try identifying displays again.",
+                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            RememberChoices();
+            fields.SuspendLayout();
+            foreach (Control control in fields.Controls.Cast<Control>().ToArray())
+            {
+                control.Dispose();
+            }
+            choices.Clear();
+            foreach (var display in displays)
+            {
+                AddDisplay(display, outputs);
+            }
+            fields.ResumeLayout(true);
+        }
+
+        foreach (var display in displays)
+        {
+            var identifier = new DisplayIdentifier(display);
+            identifiers.Add(identifier);
+            identifier.ShowOnDisplay(this);
+        }
+        hideTimer.Start();
+    }
+
+    private void HideIdentifiers()
+    {
+        hideTimer.Stop();
+        foreach (var identifier in identifiers)
+        {
+            identifier.Dispose();
+        }
+        identifiers.Clear();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            HideIdentifiers();
+            hideTimer.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+
+    private void AddDisplay(DesktopDisplay display, IReadOnlyList<AudioEndpoint> outputs)
     {
         int index = choices.Count;
         var label = new Label
@@ -100,7 +177,7 @@ internal sealed class SettingsForm : Form
         choices.Add((display, selection));
     }
 
-    private void Save()
+    private void RememberChoices()
     {
         foreach (var (display, control) in choices)
         {
@@ -114,7 +191,11 @@ internal sealed class SettingsForm : Form
                 saved.Remove(display.Key);
             }
         }
+    }
 
+    private void Save()
+    {
+        RememberChoices();
         try
         {
             OutputSettings.Save(saved);

@@ -24,6 +24,8 @@ dotnet run --project src/DinamicScreenSound -- tray
 
 In **Settings**, choose an output for each display you want to control and select **Save**. If Windows hides the tray icon, open the notification area overflow. Right-click the icon and select **Start routing**. The app saves the assignments under `%LOCALAPPDATA%\DinamicScreenSound\outputs.json` and starts paused each time it opens.
 
+In **Settings**, select **Identify displays** or press **Alt+I** to show a large number on each screen for four seconds. Match that number to the display's output selector. Select **Identify displays** again after connecting or repositioning a monitor to refresh the rows and keep your pending choices.
+
 Look for the blue monitor icon. A waveform indicates active routing, and pause bars indicate paused routing. The tooltip gives the status in text.
 
 An app keeps its current output while its windows span different displays. The tray shows **Shared app audio spans displays** when that prevents a switch. Move the app's windows onto the same display to resume automatic routing. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
