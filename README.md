@@ -28,6 +28,12 @@ Look for the blue monitor icon. A waveform indicates active routing, and pause b
 
 An app keeps its current output while its windows span different displays. The tray shows **Shared app audio spans displays** when that prevents a switch. Move the app's windows onto the same display to resume automatic routing. If an assigned device is unavailable, routing uses the Windows default output. **Pause routing** keeps the current outputs. **Exit** restores changes for apps that are still running and preserves any manual output changes made in Windows.
 
+## Follow a specific window
+
+Open **Follow this window** from the notification area, select a window, and choose **Follow window**. While routing is active, all audio from that app follows the selected window even if its other windows are on different displays. The audio stays on its current output while the selected window is minimized or being moved.
+
+The choice expires when the window closes or DinamicScreenSound exits. To clear it sooner, select a window from the same app and choose **Use automatic routing**. Fixed outputs in **App Exceptions** take priority.
+
 ## Set a fixed output for an app
 
 Open **App Exceptions** from the notification area icon. Pick an application from the list or use **Browse** to select its `.exe`. Choose a fixed audio output and select **Save**. While routing is active, the fixed output takes priority over display routing, including for apps playing in the background. If the fixed device disconnects, the app uses the Windows default output and returns to the fixed device when it reconnects.

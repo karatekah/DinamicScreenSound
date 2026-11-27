@@ -7,10 +7,30 @@ namespace DinamicScreenSound;
 internal sealed class DesktopRouter : IDisposable
 {
     private readonly Dictionary<string, AppRoute> routes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, WindowIdentity> references = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, string> previousDisplays = new(StringComparer.OrdinalIgnoreCase);
     private AudioPolicy? policy;
 
     internal void ResetSamples() => previousDisplays.Clear();
+
+    internal IReadOnlyDictionary<string, WindowIdentity> References => references;
+
+    internal void SetReference(string path, WindowIdentity? window)
+    {
+        if (window is { } identity)
+        {
+            if (DesktopWindows.Exists(identity))
+            {
+                references[path] = identity;
+            }
+        }
+        else
+        {
+            references.Remove(path);
+        }
+
+        previousDisplays.Remove(path);
+    }
 
     internal (bool Complete, bool SharedAcrossDisplays) Update(IReadOnlyDictionary<string, string?> assignments,
         IReadOnlyDictionary<string, string?> exceptions)
@@ -35,19 +55,30 @@ internal sealed class DesktopRouter : IDisposable
         var windows = DesktopWindows.List()
             .Select(window => (Window: window, Path: GetPath(window.ProcessId)))
             .Where(entry => entry.Path is not null && sessions.Contains(entry.Path))
-            .ToLookup(entry => entry.Path!, entry => entry.Window.DisplayName, StringComparer.OrdinalIgnoreCase);
+            .ToLookup(entry => entry.Path!, entry => entry.Window, StringComparer.OrdinalIgnoreCase);
         var displays = DisplayCatalog.GetDisplays().ToDictionary(display => display.DeviceName, StringComparer.OrdinalIgnoreCase);
         var available = CoreAudio.ListOutputs().Select(output => output.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var samples = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         bool complete = true;
         bool sharedAcrossDisplays = false;
+        foreach (var (path, window) in references)
+        {
+            if (!DesktopWindows.Exists(window))
+            {
+                references.Remove(path);
+                previousDisplays.Remove(path);
+            }
+        }
+
         foreach (var session in sessions)
         {
             string path = session.Key;
-            OutputTarget? target = ResolveOutput(path, windows[path], displays, assignments, exceptions, available);
+            WindowIdentity? reference = references.TryGetValue(path, out WindowIdentity window) ? window : null;
+            IEnumerable<string?> windowDisplays = GetRoutingDisplays(windows[path], reference);
+            OutputTarget? target = ResolveOutput(path, windowDisplays, displays, assignments, exceptions, available);
             if (target is null)
             {
-                sharedAcrossDisplays |= HasConflictingDisplays(windows[path], displays, assignments);
+                sharedAcrossDisplays |= HasConflictingDisplays(windowDisplays, displays, assignments);
                 continue;
             }
 
@@ -72,6 +103,17 @@ internal sealed class DesktopRouter : IDisposable
 
         previousDisplays = samples;
         return (complete, sharedAcrossDisplays);
+    }
+
+    internal static IEnumerable<string?> GetRoutingDisplays(IEnumerable<DesktopWindow> windows, WindowIdentity? reference)
+    {
+        if (reference is { } identity)
+        {
+            // Preserve the output while the selected window has no stable display.
+            return [windows.FirstOrDefault(window => window.Identity == identity)?.DisplayName];
+        }
+
+        return windows.Select(window => window.DisplayName);
     }
 
     internal static bool HasConflictingDisplays(IEnumerable<string?> windows,

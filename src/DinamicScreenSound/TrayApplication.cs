@@ -23,6 +23,7 @@ internal sealed class TrayApplication : ApplicationContext
 
         menu.Items.Add("&Settings…", null, (_, _) => OpenSettings());
         menu.Items.Add("&App Exceptions…", null, (_, _) => OpenExceptions());
+        menu.Items.Add("&Follow this window…", null, (_, _) => OpenFollowWindow());
         menu.Items.Add(toggleItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("E&xit", null, (_, _) => ExitThread());
@@ -77,6 +78,9 @@ internal sealed class TrayApplication : ApplicationContext
     private void OpenSettings() => OpenConfiguration(() => new SettingsForm(assignments), form => assignments = form.Assignments);
 
     private void OpenExceptions() => OpenConfiguration(() => new AppExceptionsForm(exceptions), form => exceptions = form.Exceptions);
+
+    private void OpenFollowWindow() => OpenConfiguration(() => new FollowWindowForm(router.References, exceptions),
+        form => router.SetReference(form.AppPath, form.Reference));
 
     private void OpenConfiguration<T>(Func<T> create, Action<T> accept) where T : Form
     {

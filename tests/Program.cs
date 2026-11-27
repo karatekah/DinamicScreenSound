@@ -25,6 +25,24 @@ CheckOutput("fixed Windows default", ["Display 2"], new(null, null));
 exceptions.Clear();
 CheckOutput("display routing resumes after removing the exception", ["Display 2"], new("monitor-audio", "monitor"));
 CheckOutput("ambiguous windows keep their current output", ["Display 1", "Display 2"], null);
+var videoWindow = new WindowIdentity(101, 10, 1000);
+var secondaryWindow = new WindowIdentity(102, 10, 1000);
+DesktopWindow[] split = [new(videoWindow, "Display 2", "Video"), new(secondaryWindow, "Display 1", "Other")];
+CheckOutput("selected window resolves a split", DesktopRouter.GetRoutingDisplays(split, videoWindow),
+    new("monitor-audio", "monitor"));
+CheckOutput("selected window follows back to the primary display",
+    DesktopRouter.GetRoutingDisplays([split[0] with { DisplayName = "Display 1" }, split[1]], videoWindow),
+    new("speakers", "laptop"));
+CheckOutput("selected moving or minimized window holds the output",
+    DesktopRouter.GetRoutingDisplays([split[0] with { DisplayName = null }, split[1]], videoWindow), null);
+CheckOutput("a temporarily hidden selected window holds the output",
+    DesktopRouter.GetRoutingDisplays([split[1]], videoWindow), null);
+CheckOutput("clearing the selected window restores the split rule",
+    DesktopRouter.GetRoutingDisplays(split, null), null);
+exceptions["brave.exe"] = "speakers";
+CheckOutput("fixed output overrides a selected window", DesktopRouter.GetRoutingDisplays(split, videoWindow),
+    new("speakers", null));
+exceptions.Clear();
 CheckConflict("windows on different configured displays", ["Display 1", "Display 2"], true);
 CheckConflict("windows on the same display", ["Display 1", "display 1"], false);
 CheckConflict("a window with no stable display yet", ["Display 1", null], false);
@@ -41,7 +59,7 @@ void CheckConflict(string scenario, string?[] windows, bool expected)
     }
 }
 
-void CheckOutput(string scenario, string?[] windows, DesktopRouter.OutputTarget? expected)
+void CheckOutput(string scenario, IEnumerable<string?> windows, DesktopRouter.OutputTarget? expected)
 {
     var actual = DesktopRouter.ResolveOutput("BRAVE.EXE", windows, displays, assignments, exceptions, available);
     if (actual != expected)
